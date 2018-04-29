@@ -1,0 +1,14 @@
+Temp/
+Library/
+Obj/
+.vs/
+
+*.csproj
+*.unityproj
+*.sln
+*.user
+*.userprefs
+*.DS_store
+*.v11.suo
+ProjectSettings/ProjectSettings.asset
+ProjectSettings/ProjectVersion.txt
