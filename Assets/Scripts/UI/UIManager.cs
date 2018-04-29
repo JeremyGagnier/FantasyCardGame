@@ -5,10 +5,20 @@ using System.Collections.Generic;
 
 public enum MenuType
 {
-    NONE,
-    TITLE
+    TITLE,
+    GAME
 }
 
+/**
+ * UIManager loads and destroys menus. This class provides a strong base for a deterministic and well behaved menu
+ * system.
+ * 
+ * Instead of having all your menus load with a scene they are loaded and destroyed as needed. This is a more scalable
+ * solution and keeps load times short. When used properly there should only be one main scene with only a couple game
+ * objects, UIManager being one of them.
+ * 
+ * This class must target one menu to load initially, and state + open/close calls should be managed by menus.
+ */
 public class UIManager : MonoBehaviour
 {
     private MenuType BASE_PANEL = MenuType.TITLE;
@@ -25,15 +35,18 @@ public class UIManager : MonoBehaviour
             (int)BASE_PANEL,
             new List<Transition<MenuState>> {
                 // Insert all possible menu transitions here and hook them up to the correct transition function.
-                // Title Screen
-                /*new Transition<MenuState>(
-                    (int)MenuType.TITLE_SCREEN,
-                    (int)MenuType.RACE_SELECTION,
-                    () => new RaceSelectionMenuState((TitleMenuState)currentState)),
+
+                // Title
                 new Transition<MenuState>(
-                    (int)MenuType.TITLE_SCREEN,
-                    (int)MenuType.GAME_GUI,
-                    () => new GameMenuState((TitleMenuState)currentState)),*/
+                    (int)MenuType.TITLE,
+                    (int)MenuType.GAME,
+                    () => new GameMenuState((TitleMenuState)currentState)),
+
+                // Game
+                new Transition<MenuState>(
+                    (int)MenuType.GAME,
+                    (int)MenuType.TITLE,
+                    () => new TitleMenuState((GameMenuState)currentState)),
             }
         );
 
