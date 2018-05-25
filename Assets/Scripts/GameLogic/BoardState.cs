@@ -40,8 +40,8 @@ public class BoardState
         int oppRamp,
         bool doesLocalGoFirst)
     {
-        this.hero[0] = new HeroState(localHero);
-        this.hero[1] = new HeroState(oppHero);
+        this.hero[0] = new HeroState(localHero, 0);
+        this.hero[1] = new HeroState(oppHero, 1);
         this.localDeckSize = localDeckSize;
         this.oppDeckSize = oppDeckSize;
         this.ramp[0] = doesLocalGoFirst ? localRamp : oppRamp;

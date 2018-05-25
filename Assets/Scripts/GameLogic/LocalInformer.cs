@@ -49,4 +49,20 @@ public class LocalInformer : Informer
     {
         return oppCards.Count;
     }
+
+    override public void PlayCard(CardState card, Targets targets)
+    {
+    }
+    
+    override public void Attack(CardState attacker, Targets defender)
+    {
+    }
+    
+    override public void UseHeroActive(Targets targets)
+    {
+    }
+
+    override public void EndTurn()
+    {
+    }
 }

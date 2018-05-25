@@ -2,10 +2,11 @@
 
 public class Generic
 {
-    public static GameObject Instantiate(GameObject original)
+    public static GameObject Instantiate(GameObject original, Transform parent, bool keepWorldPosition = false)
     {
         GameObject copy = GameObject.Instantiate(original);
         copy.name = original.name;
+        copy.transform.SetParent(parent, false);
         return copy;
     }
 

@@ -11,12 +11,14 @@ public class CardState
 
     public int playerNum;
     public int health;
+    public int attack;
 
     public CardState(Card card, int playerNum)
     {
         this.card = card;
         this.playerNum = playerNum;
         this.health = card.health;
+        this.attack = card.attack;
     }
 
     public void TryTrigger(

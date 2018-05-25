@@ -3,6 +3,7 @@
 public class GainBlueMana : Card
 {
     override public bool isPermanent { get { return false; } }
+    override public string name { get { return "GainBlueMana"; } }
     override public string effectString { get { return "Convert one colorless mana into blue mana"; } }
 
     override public bool CanTrigger(

@@ -64,8 +64,7 @@ public class UIManager : MonoBehaviour
             Debug.LogError("Can't find panel with name: " + panelName);
         }
 
-        GameObject panelObj = Generic.Instantiate(prefab);
-        panelObj.transform.SetParent(this.transform, false);
+        GameObject panelObj = Generic.Instantiate(prefab, transform);
         Menu panel = panelObj.GetComponent<Menu>();
         if (panel == null)
         {

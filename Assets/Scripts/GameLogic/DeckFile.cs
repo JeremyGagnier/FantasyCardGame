@@ -72,7 +72,7 @@ public class DeckFile
         }
         catch (FileNotFoundException)
         {
-            Debug.LogError("Deck file '" + deckName + "' not found.");
+            Debug.LogError(string.Format("Deck file not found at path '{0}'", decksPath + deckName + DECK_EXTENSION));
         }
     }
 }

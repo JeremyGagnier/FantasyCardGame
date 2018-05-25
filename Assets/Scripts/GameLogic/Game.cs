@@ -12,14 +12,14 @@ public class Game
     private readonly int localPlayerNum;
     private readonly int oppPlayerNum;
 
-    static public Game StartLocalGame(string localDeckName, string oppDeckName)
+    static public Game StartLocalGame(string localDeckName, string oppDeckName, UIHooks uiHooks)
     {
-        return new Game(new LocalInformer(localDeckName, oppDeckName), true);
+        return new Game(new LocalInformer(localDeckName, oppDeckName), true, uiHooks);
     }
 
-	public Game(Informer informer, bool doesLocalGoFirst)
+	public Game(Informer informer, bool doesLocalGoFirst, UIHooks uiHooks)
     {
-        uiHooks = new UIHooks();
+        this.uiHooks = uiHooks;
         this.informer = informer;
         localPlayerNum = doesLocalGoFirst ? 0 : 1;
         oppPlayerNum = doesLocalGoFirst ? 1 : 0;
@@ -31,18 +31,31 @@ public class Game
             doesLocalGoFirst ? GameRules.FIRST_PLAYER_RAMP : GameRules.SECOND_PLAYER_RAMP,
             doesLocalGoFirst ? GameRules.SECOND_PLAYER_RAMP : GameRules.FIRST_PLAYER_RAMP,
             doesLocalGoFirst);
+
+        for (int i = 0; i < GameRules.FIRST_PLAYER_STARTING_DRAW; ++i)
+        {
+            Draw(0);
+        }
+        for (int i = 0; i < GameRules.SECOND_PLAYER_STARTING_DRAW; ++i)
+        {
+            Draw(1);
+        }
+        StartTurn();
     }
 
     public void Draw(int playerNum)
     {
         if (playerNum == localPlayerNum)
         {
-            board.localHand.Add(new CardState(informer.DrawLocalCard(), localPlayerNum));
+            CardState card = new CardState(informer.DrawLocalCard(), localPlayerNum);
+            board.localHand.Add(card);
+            uiHooks.onLocalDrawCard(card);
         }
         else
         {
             board.oppDeckSize -= 1;
             board.oppHandSize += 1;
+            uiHooks.onOppDrawCard();
         }
         foreach (CardState card in board.playOrder)
         {
@@ -50,40 +63,26 @@ public class Game
         }
     }
 
-    public void StartTurn()
-    {
-        int turnPlayer = board.turn % 2;
-        if (board.ramp[turnPlayer] > 0)
-        {
-            board.ramp[turnPlayer] -= 1;
-            board.colorlessMana[turnPlayer] += 1;
-        }
-        board.availableColorlessMana[turnPlayer] = board.colorlessMana[turnPlayer];
-        board.availableBlueMana[turnPlayer] = board.blueMana[turnPlayer];
-        board.availableRedMana[turnPlayer] = board.redMana[turnPlayer];
-        board.availableGreenMana[turnPlayer] = board.greenMana[turnPlayer];
-        board.availableBlackMana[turnPlayer] = board.blackMana[turnPlayer];
-
-        Draw(turnPlayer);
-        foreach (CardState card in board.playOrder)
-        {
-            card.TryTrigger(EffectTrigger.START_OF_TURN, this, board, new Targets(turnPlayer));
-        }
-    }
-
     public void EndTurn()
     {
         int turnPlayer = board.turn % 2;
+
+        if (turnPlayer == localPlayerNum)
+        {
+            informer.EndTurn();
+        }
+
         foreach (CardState card in board.playOrder)
         {
             card.TryTrigger(EffectTrigger.END_OF_TURN, this, board, new Targets(turnPlayer));
         }
         board.turn += 1;
+        StartTurn();
     }
 
-    public void CanPlay(CardState card, Targets targets)
+    public bool CanPlay(CardState card, Targets targets)
     {
-        card.CanPlay(board, targets);
+        return card.CanPlay(board, targets);
     }
 
     public void Play(CardState card, Targets targets)
@@ -95,6 +94,17 @@ public class Game
         }
 
         int turnPlayer = board.turn % 2;
+
+        if (turnPlayer != card.playerNum)
+        {
+            Debug.LogError("Tried to play an opponents card!!");
+            return;
+        }
+
+        if (turnPlayer == localPlayerNum)
+        {
+            informer.PlayCard(card, targets);
+        }
 
         card.TryTrigger(EffectTrigger.PLAY, this, board, targets);
 
@@ -110,6 +120,18 @@ public class Game
         }
     }
 
+    public void UseHeroActive(int playerNum, Targets targets)
+    {
+        int turnPlayer = board.turn % 2;
+        if (turnPlayer != playerNum)
+        {
+            Debug.LogError("Tried activating opponents hero power!!");
+            return;
+        }
+        informer.UseHeroActive(targets);
+        board.hero[playerNum].TryActivate(this, board, targets);
+    }
+
     public void Attack(CardState attacker, Targets defender)
     {
         if (defender.cards.Count + defender.players.Count != 1)
@@ -119,19 +141,48 @@ public class Game
             return;
         }
 
+        int turnPlayer = board.turn % 2;
+
+        if (turnPlayer != attacker.playerNum)
+        {
+            Debug.LogError("Tried to attack with opponents creature!!");
+            return;
+        }
+
         Targets combatants = new Targets(attacker);
         if (defender.cards.Count == 0)
         {
+            if (turnPlayer == defender.players[0])
+            {
+                Debug.LogError("Tried to attack themselves!");
+                return;
+            }
             combatants.players.Add(defender.players[0]);
         }
         else
         {
+            if (turnPlayer == defender.cards[0].playerNum)
+            {
+                Debug.LogError("Tried to attack their own creature!");
+                return;
+            }
             combatants.cards.Add(defender.cards[0]);
         }
+
+        informer.Attack(attacker, defender);
 
         foreach (CardState boardCard in board.playOrder)
         {
             boardCard.TryTrigger(EffectTrigger.ATTACK, this, board, combatants);
+        }
+
+        if (defender.cards.Count == 0)
+        {
+            Damage(defender.players[0], attacker.attack);
+        }
+        else
+        {
+            Damage(defender.cards[0], attacker.attack);
         }
     }
 
@@ -170,7 +221,28 @@ public class Game
         }
     }
 
-    public void GameOver(int winner)
+    private void StartTurn()
+    {
+        int turnPlayer = board.turn % 2;
+        if (board.ramp[turnPlayer] > 0)
+        {
+            board.ramp[turnPlayer] -= 1;
+            board.colorlessMana[turnPlayer] += 1;
+        }
+        board.availableColorlessMana[turnPlayer] = board.colorlessMana[turnPlayer];
+        board.availableBlueMana[turnPlayer] = board.blueMana[turnPlayer];
+        board.availableRedMana[turnPlayer] = board.redMana[turnPlayer];
+        board.availableGreenMana[turnPlayer] = board.greenMana[turnPlayer];
+        board.availableBlackMana[turnPlayer] = board.blackMana[turnPlayer];
+
+        Draw(turnPlayer);
+        foreach (CardState card in board.playOrder)
+        {
+            card.TryTrigger(EffectTrigger.START_OF_TURN, this, board, new Targets(turnPlayer));
+        }
+    }
+
+    private void GameOver(int winner)
     {
         if (winner == localPlayerNum)
         {
